@@ -1,3 +1,4 @@
+"""Ponto de entrada principal para executar o agente de escala via linha de comando."""
 from services.data_loader import load_data, preprocess_data
 import pandas as pd
 from models.scheduler import create_schedule

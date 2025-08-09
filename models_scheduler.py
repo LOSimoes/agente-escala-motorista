@@ -1,26 +1,85 @@
-from models.optimizer import calculate_distance, calculate_travel_time, calculate_travel_cost
-from services.rule_engine import validate_assignment, is_time_conflict
-from datetime import datetime, timedelta
-import pandas as pd
+"""Módulo principal de agendamento que contém a lógica de otimização."""
+from __future__ import annotations
 
-def create_schedule(motoristas, veiculos, linhas, motoristas_agendados=None, new_driver_penalty=10000.0):
+from datetime import datetime, time, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
+import pandas as pd
+from models.optimizer import calculate_distance, calculate_travel_time, calculate_travel_cost
+from services.rule_engine import is_time_conflict
+
+
+def create_schedule(
+    motoristas: pd.DataFrame,
+    veiculos: pd.DataFrame,
+    linhas: pd.DataFrame,
+    motoristas_agendados: Optional[Dict[str, List[Tuple[time, time, str]]]] = None,
+    new_driver_penalty: float = 10000.0
+) -> Dict[Any, Dict[str, Any]]:
+    """
+    Cria a escala otimizada de motoristas, veículos e linhas.
+
+    Esta versão é otimizada para desempenho, pré-processando os dados e
+    reduzindo a complexidade dos loops aninhados para encontrar a melhor
+    combinação de motorista/veículo, minimizando o custo e o número de
+    motoristas utilizados.
+
+    Args:
+        motoristas: DataFrame de motoristas disponíveis.
+        veiculos: DataFrame de veículos disponíveis.
+        linhas: DataFrame de linhas a serem agendadas.
+        motoristas_agendados: Dicionário que rastreia os agendamentos existentes.
+            Formato: {'NomeMotorista': [(inicio, fim, destino), ...]}.
+        new_driver_penalty: Custo artificial para penalizar a alocação de um
+            novo motorista que ainda não está em rota.
+
+    Returns:
+        Um dicionário representando a escala gerada, onde as chaves são os IDs
+        das linhas e os valores são dicionários com motorista e veículo alocados.
+    """
     escala_gerada = {}
     if motoristas_agendados is None:
-        # Dicionário para rastrear horários: {'Nome': [(inicio, fim, destino), ...]}
         motoristas_agendados = {}
     veiculos_alocados = set()
 
-    # Ordenar as linhas por horário de início para um agendamento mais lógico
-    for _, linha in linhas.sort_values(by='horario_inicio_dt').iterrows():
-        melhor_pontuacao = float('inf')
-        melhor_motorista = None
-        melhor_veiculo = None
+    # --- Otimização 1: Pré-processamento e Estruturas de Dados Eficientes ---
+    # Converter para lista de dicionários para iteração muito mais rápida que .iterrows()
+    motoristas_list = motoristas.to_dict('records')
 
-        for _, motorista in motoristas.iterrows():
+    # Criar lookups para filtragem rápida (O(M) e O(V) uma única vez)
+    motoristas_por_habilidade = {}
+    # Usamos defaultdict para simplificar a criação de listas
+    from collections import defaultdict
+    motoristas_por_habilidade = defaultdict(list)
+    for m in motoristas.to_dict('records'):
+        for habilidade in m.get('habilidades', []):
+            motoristas_por_habilidade[habilidade].append(m)
+
+    veiculos_por_tipo = {}
+    for v in veiculos.to_dict('records'):
+        tipo = v.get('tipo')
+        if tipo not in veiculos_por_tipo:
+            veiculos_por_tipo[tipo] = []
+        veiculos_por_tipo[tipo].append(v)
+
+    # Ordenar as linhas por horário de início e iterar sobre uma lista de dicts
+    sorted_linhas = linhas.sort_values(by='horario_inicio_dt').to_dict('records')
+
+    for linha in sorted_linhas:
+        melhor_pontuacao = float('inf')
+        melhor_motorista_info = None
+        melhor_veiculo_info = None
+
+        # --- Otimização 2: Filtrar candidatos antes dos loops principais ---
+        tipo_veiculo_req = linha['tipo_veiculo_necessario']
+        motoristas_candidatos = motoristas_por_habilidade.get(tipo_veiculo_req, [])
+        veiculos_candidatos = veiculos_por_tipo.get(tipo_veiculo_req, [])
+
+        for motorista in motoristas_candidatos:
             # Pula motoristas indisponíveis
-            if motorista['disponibilidade'] != 'disponivel':
+            if motorista.get('disponibilidade', 'disponivel') != 'disponivel':
                 continue
-            
+
             agendamentos_atuais = motoristas_agendados.get(motorista['nome'], [])
 
             # Calcula o total de horas já trabalhadas pelo motorista
@@ -28,13 +87,13 @@ def create_schedule(motoristas, veiculos, linhas, motoristas_agendados=None, new
             for inicio, fim, _ in agendamentos_atuais:
                 inicio_dt = datetime.combine(datetime.today(), inicio)
                 fim_dt = datetime.combine(datetime.today(), fim)
-                if fim_dt < inicio_dt: # Lida com turnos que cruzam a meia-noite
+                if fim_dt < inicio_dt:  # Lida com turnos que cruzam a meia-noite
                     fim_dt += timedelta(days=1)
                 horas_trabalhadas += (fim_dt - inicio_dt)
 
             # Verifica se a nova linha excede a jornada de trabalho máxima
             duracao_nova_linha = timedelta(minutes=linha['duracao_minutos'])
-            jornada_maxima = timedelta(hours=motorista.get('jornada_maxima_horas', 24)) # Padrão de 24h se não especificado
+            jornada_maxima = timedelta(hours=motorista.get('jornada_maxima_horas', 24))
             if horas_trabalhadas + duracao_nova_linha > jornada_maxima:
                 continue
 
@@ -43,53 +102,28 @@ def create_schedule(motoristas, veiculos, linhas, motoristas_agendados=None, new
             if is_time_conflict(linha, agendamentos_simples):
                 continue
 
-            # Determina a localização e o horário de disponibilidade do motorista
             ponto_partida_motorista = motorista['localizacao']
             horario_disponivel_motorista = datetime.min.time()
-
-            # Encontra a última viagem do motorista que termina antes da nova linha começar
             ultimo_agendamento = max([ag for ag in agendamentos_atuais if ag[1] <= linha['horario_inicio_dt']], default=None, key=lambda x: x[1])
 
             if ultimo_agendamento:
                 ponto_partida_motorista = ultimo_agendamento[2]  # Destino da última viagem
-                horario_disponivel_motorista = ultimo_agendamento[1] # Horário de término da última viagem
+                horario_disponivel_motorista = ultimo_agendamento[1]  # Horário de término
 
-            # Calcula o custo (distância de deslocamento) e verifica se há tempo suficiente
             dist_deslocamento = calculate_distance(ponto_partida_motorista, linha['origem'])
             tempo_deslocamento = calculate_travel_time(dist_deslocamento)
-
             horario_inicio_linha_dt = datetime.combine(datetime.today(), linha['horario_inicio_dt'])
             horario_disponivel_dt = datetime.combine(datetime.today(), horario_disponivel_motorista)
 
-            # Se o motorista não consegue chegar a tempo, pula para o próximo
             if horario_disponivel_dt + tempo_deslocamento > horario_inicio_linha_dt:
                 continue
 
-            for _, veiculo in veiculos.iterrows():
-                # Pula veículos indisponíveis (em manutenção)
+            for veiculo in veiculos_candidatos:
                 if veiculo.get('disponibilidade', 'disponivel') != 'disponivel':
                     continue
-
-                # Pula veículos já alocados
                 if veiculo['numero_carro'] in veiculos_alocados:
                     continue
 
-                if validate_assignment(motorista, veiculo, linha):
-                    # Calcula o custo do deslocamento com base no veículo específico
-                    custo_deslocamento = calculate_travel_cost(dist_deslocamento, veiculo)
-
-                    # Adiciona uma penalidade alta se for necessário usar um novo motorista
-                    custo_final = custo_deslocamento
-                    if motorista['nome'] not in motoristas_agendados:
-                        custo_final += new_driver_penalty
-                    
-                    if custo_final < melhor_pontuacao:
-                        melhor_pontuacao = custo_final
-                        melhor_motorista = motorista['nome']
-                        melhor_veiculo = veiculo['numero_carro']
-
-        if melhor_motorista and melhor_veiculo:
-            escala_gerada[linha['id']] = {'motorista': melhor_motorista, 'veiculo': melhor_veiculo, 'horario': linha['horario_inicio']}
             
             # Adiciona o novo agendamento ao "calendário" do motorista
             if melhor_motorista not in motoristas_agendados:

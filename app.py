@@ -1,6 +1,9 @@
+"""Interface gráfica web com Streamlit para o Agente de Escala."""
+from __future__ import annotations
+
 import streamlit as st
 import pandas as pd
-from services.data_loader import load_data, preprocess_data
+from services.data_loader import preprocess_data
 from models.scheduler import create_schedule
 from services.exceptions_handler import apply_manual_assignments
 
@@ -25,8 +28,26 @@ new_driver_penalty = st.sidebar.number_input(
 )
 
 # --- 2. Lógica de Geração da Escala (Função permanece a mesma) ---
-def gerar_escala_completa(motoristas, veiculos, linhas, excecoes_df, penalty):
-    """Executa o fluxo completo de geração de escala."""
+def gerar_escala_completa(
+    motoristas: pd.DataFrame,
+    veiculos: pd.DataFrame,
+    linhas: pd.DataFrame,
+    excecoes_df: pd.DataFrame,
+    penalty: float
+) -> pd.DataFrame:
+    """
+    Executa o fluxo completo de geração de escala a partir dos dados de entrada.
+
+    Args:
+        motoristas: DataFrame com os dados dos motoristas.
+        veiculos: DataFrame com os dados dos veículos.
+        linhas: DataFrame com os dados das linhas.
+        excecoes_df: DataFrame com as alocações manuais.
+        penalty: Penalidade a ser aplicada para novos motoristas.
+
+    Returns:
+        Um DataFrame do pandas contendo a escala final gerada.
+    """
     motoristas_proc, veiculos_proc, linhas_proc = preprocess_data(motoristas.copy(), veiculos.copy(), linhas.copy())
     excecoes = excecoes_df.to_dict('records')
 
@@ -38,10 +59,10 @@ def gerar_escala_completa(motoristas, veiculos, linhas, excecoes_df, penalty):
     escala_lista = []
     for linha_id, info in sorted(escala_final.items()):
         escala_lista.append({
-            'Linha': linha_id,
+            'Linha_ID': linha_id,
             'Horário': info.get('horario', 'N/A'),
-            'Motorista': info.get('motorista', 'Não Alocado'),
-            'Carro': info.get('veiculo', 'Não Alocado')
+            'Motorista_Alocado': info.get('motorista', 'Nao Alocado'),
+            'Veiculo_Alocado': info.get('veiculo', 'Nao Alocado')
         })
     return pd.DataFrame(escala_lista)
 
@@ -87,7 +108,7 @@ if motoristas_upload and veiculos_upload and linhas_upload:
             st.download_button(
                label="📥 Baixar Escala como CSV",
                data=csv,
-               file_name='escala_final.csv',
+               file_name='escala_agente.csv',
                mime='text/csv',
             )
 else:

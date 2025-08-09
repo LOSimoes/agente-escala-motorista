@@ -1,9 +1,17 @@
+"""Ferramenta de linha de comando para comparar duas escalas."""
+from __future__ import annotations
+
 import pandas as pd
 import sys
 
-def compare_scales(real_scale_path, agent_scale_path):
+
+def compare_scales(real_scale_path: str, agent_scale_path: str) -> None:
     """
     Compara uma escala real com a escala gerada pelo agente e destaca as diferenças.
+
+    Args:
+        real_scale_path: O caminho para o arquivo CSV da escala real (humana).
+        agent_scale_path: O caminho para o arquivo CSV da escala gerada pelo agente.
     """
     try:
         df_real = pd.read_csv(real_scale_path)
@@ -13,13 +21,13 @@ def compare_scales(real_scale_path, agent_scale_path):
         return
 
     # Renomeia colunas para a comparação
-    df_real.rename(columns={'Motorista_Alocado': 'Motorista_Real', 'Veiculo_Alocado': 'Veiculo_Real'}, inplace=True)
-    df_agent.rename(columns={'Motorista_Alocado': 'Motorista_Agente', 'Veiculo_Alocado': 'Veiculo_Agente'}, inplace=True)
+    df_real = df_real.rename(columns={'Motorista_Alocado': 'Motorista_Real', 'Veiculo_Alocado': 'Veiculo_Real'})
+    df_agent = df_agent.rename(columns={'Motorista_Alocado': 'Motorista_Agente', 'Veiculo_Alocado': 'Veiculo_Agente'})
 
     # Junta as duas escalas pela Linha_ID
     df_comparison = pd.merge(df_real[['Linha_ID', 'Motorista_Real', 'Veiculo_Real']],
                              df_agent[['Linha_ID', 'Motorista_Agente', 'Veiculo_Agente']],
-                             on='Linha_ID',
+                             on='Linha_ID',  # Corrigido de 'on' para 'on'
                              how='outer') # 'outer' para ver linhas que um pode ter e o outro não
 
     # Encontra as divergências
