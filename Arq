@@ -1,0 +1,14 @@
+projeto_ia_escala/
+├── data/
+│   ├── motoristas.csv
+│   ├── veiculos.csv
+│   └── linhas.csv
+├── models/
+│   ├── scheduler.py
+│   └── optimizer.py
+├── services/
+│   ├── data_loader.py
+│   ├── rule_engine.py
+│   └── exceptions_handler.py
+├── main.py
+└── README.md

@@ -1,0 +1,20 @@
+# Ambientes Virtuais
+# Ignora a pasta do ambiente virtual para não enviar todas as bibliotecas.
+.venv/
+venv/
+ENV/
+env/
+
+# Arquivos de cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Arquivos gerados pela aplicação
+# Descomente a linha abaixo se não quiser versionar a escala gerada.
+# data/escala_final.csv
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
