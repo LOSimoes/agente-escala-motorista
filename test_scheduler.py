@@ -144,4 +144,10 @@ def test_aplica_penalidade_para_novo_motorista(base_data, mocker):
 
     # Act
     # A penalidade padrão (10000) é muito maior que o custo de deslocamento (10)
+    escala = create_schedule(
+        motoristas, veiculos, linha_para_agendar, motoristas_agendados
+    )
 
+    # Assert
+    # O sistema deve escolher o Motorista A, pois 10 (custo) < 0 (custo) + 10000 (penalidade)
+    assert escala['L2']['motorista'] == 'Motorista A'

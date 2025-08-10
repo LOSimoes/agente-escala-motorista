@@ -99,7 +99,7 @@ def create_schedule(
 
             # Verifica conflito de horário direto
             agendamentos_simples = [(start, end) for start, end, dest in agendamentos_atuais]
-            if is_time_conflict(linha, agendamentos_simples):
+            if is_time_conflict(linha['horario_inicio_dt'], linha['horario_fim_dt'], agendamentos_simples):
                 continue
 
             ponto_partida_motorista = motorista['localizacao']
@@ -124,13 +124,35 @@ def create_schedule(
                 if veiculo['numero_carro'] in veiculos_alocados:
                     continue
 
-            
-            # Adiciona o novo agendamento ao "calendário" do motorista
-            if melhor_motorista not in motoristas_agendados:
-                motoristas_agendados[melhor_motorista] = []
-            motoristas_agendados[melhor_motorista].append(
+                # Calcula o custo do deslocamento com base no veículo específico
+                # Nota: calculate_travel_cost funciona com dicts, não precisa de pd.Series
+                custo_deslocamento = calculate_travel_cost(dist_deslocamento, veiculo)
+
+                # Adiciona uma penalidade alta se for necessário usar um novo motorista
+                custo_final = custo_deslocamento
+                if motorista['nome'] not in motoristas_agendados:
+                    custo_final += new_driver_penalty
+
+                if custo_final < melhor_pontuacao:
+                    melhor_pontuacao = custo_final
+                    melhor_motorista_info = motorista
+                    melhor_veiculo_info = veiculo
+
+        if melhor_motorista_info and melhor_veiculo_info:
+            melhor_motorista_nome = melhor_motorista_info['nome']
+            melhor_veiculo_num = melhor_veiculo_info['numero_carro']
+
+            escala_gerada[linha['id']] = {
+                'motorista': melhor_motorista_nome,
+                'veiculo': melhor_veiculo_num,
+                'horario': linha['horario_inicio']
+            }
+
+            if melhor_motorista_nome not in motoristas_agendados:
+                motoristas_agendados[melhor_motorista_nome] = []
+            motoristas_agendados[melhor_motorista_nome].append(
                 (linha['horario_inicio_dt'], linha['horario_fim_dt'], linha['destino'])
             )
-            veiculos_alocados.add(melhor_veiculo)
-            
+            veiculos_alocados.add(melhor_veiculo_num)
+
     return escala_gerada
