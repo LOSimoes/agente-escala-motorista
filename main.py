@@ -1,10 +1,5 @@
 """Ponto de entrada principal para executar o agente de escala via linha de comando."""
-import sys
-import os
 import pandas as pd
-
-# Adiciona o diretório raiz do projeto ao sys.path para resolver importações locais
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.data_loader import load_data, preprocess_data
 from models.scheduler import create_schedule
@@ -39,8 +34,11 @@ if __name__ == "__main__":
     escala_final = {**escala_manual, **escala_otimizada}
     
     print("\n--- Escala Final Gerada ---")
-    for linha_id, info in sorted(escala_final.items()):
-        print(f"Linha {linha_id} ({info.get('horario', 'N/A')}): Motorista {info.get('motorista', 'N/A')} - Veículo {info.get('veiculo', 'N/A')}")
+    if escala_final:
+        for linha_id, info in sorted(escala_final.items()):
+            print(f"Linha {linha_id} ({info.get('horario', 'N/A')}): Motorista {info.get('motorista', 'N/A')} - Veículo {info.get('veiculo', 'N/A')}")
+    else:
+        print("Nenhuma linha foi alocada na escala final.")
 
     # 6. Salvar a escala final em um arquivo CSV para o analista
     try:

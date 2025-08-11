@@ -2,12 +2,8 @@
 from __future__ import annotations
 
 import sys
-import os
 import streamlit as st
 import pandas as pd
-
-# Adiciona o diretório raiz do projeto ao sys.path para resolver importações locais
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.data_loader import preprocess_data
 from models.scheduler import create_schedule
