@@ -27,7 +27,7 @@ def compare_scales(real_scale_path: str, agent_scale_path: str) -> None:
     # Junta as duas escalas pela Linha_ID
     df_comparison = pd.merge(df_real[['Linha_ID', 'Motorista_Real', 'Veiculo_Real']],
                              df_agent[['Linha_ID', 'Motorista_Agente', 'Veiculo_Agente']],
-                             on='Linha_ID',  # Corrigido de 'on' para 'on'
+                             on='Linha_ID',
                              how='outer') # 'outer' para ver linhas que um pode ter e o outro não
 
     # Encontra as divergências
