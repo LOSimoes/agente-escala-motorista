@@ -1,5 +1,7 @@
 # Agente de IA para Escala de Motoristas
 
+[![Python CI](https://github.com/<SEU-USUARIO>/<SEU-REPOSITORIO>/actions/workflows/ci.yml/badge.svg)](https://github.com/<SEU-USUARIO>/<SEU-REPOSITORIO>/actions/workflows/ci.yml)
+
 Este projeto é um assistente digital inteligente projetado para automatizar e otimizar a complexa tarefa de montar escalas de motoristas para empresas de fretamento. Utilizando um conjunto de regras e heurísticas de otimização, o agente analisa motoristas, veículos e linhas para criar a escala mais eficiente possível, minimizando custos e ociosidade.
 
 ## Funcionalidades Principais

@@ -1,6 +1,12 @@
 """Ponto de entrada principal para executar o agente de escala via linha de comando."""
-from services.data_loader import load_data, preprocess_data
+import sys
+import os
 import pandas as pd
+
+# Adiciona o diretório raiz do projeto ao sys.path para resolver importações locais
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from services.data_loader import load_data, preprocess_data
 from models.scheduler import create_schedule
 from services.exceptions_handler import apply_manual_assignments
 

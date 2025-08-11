@@ -125,7 +125,6 @@ def create_schedule(
                     continue
 
                 # Calcula o custo do deslocamento com base no veículo específico
-                # Nota: calculate_travel_cost funciona com dicts, não precisa de pd.Series
                 custo_deslocamento = calculate_travel_cost(dist_deslocamento, veiculo)
 
                 # Adiciona uma penalidade alta se for necessário usar um novo motorista

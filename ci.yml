@@ -1,0 +1,48 @@
+# Nome do workflow que aparecerá na aba "Actions" do GitHub
+name: Python CI
+
+# Define os gatilhos que iniciarão o workflow
+on:
+  push:
+    branches: [ "main" ] # Roda quando houver um push na branch main
+  pull_request:
+    branches: [ "main" ] # Roda quando um pull request for aberto para a branch main
+
+# Define os trabalhos (jobs) que serão executados
+jobs:
+  build:
+    # Define o ambiente de execução (máquina virtual)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Roda o job para múltiplas versões do Python para garantir compatibilidade
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+      # 1. Clona o repositório para a máquina virtual
+      - uses: actions/checkout@v4
+
+      # 2. Configura a versão do Python especificada na matriz
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # 3. Instala as dependências
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      # 4. Executa o linter (flake8) para verificar a qualidade do código
+      - name: Lint with flake8
+        run: |
+          # Para a execução se houver erros de estilo (exceto E501: linha muito longa)
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      # 5. Executa os testes unitários com pytest
+      - name: Test with pytest
+        run: |
+          pytest
